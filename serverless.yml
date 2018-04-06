@@ -1,0 +1,87 @@
+service: takehomeexam
+
+custom:
+  bucket: finaltakehomebucket
+  table1: finalexamtable
+  table2: playlisttable
+
+provider:
+  name: aws
+  runtime: nodejs6.10
+  stage: dev
+  region: us-west-2
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource: "arn:aws:dynamodb:us-west-2:*:*"
+    - Effect: Allow
+      Action:
+        - s3:*
+      Resource: "*"
+
+functions:
+  upload:
+    handler: upload.upload
+    events:
+      - s3:
+          bucket: ${self:custom.bucket}
+          event: s3:ObjectCreated:*
+          
+  playlist:
+    handler: playlist.playlist
+    events:
+      - http:
+          path: spotify
+          method: post
+          cors: true
+
+  list:
+    handler: list.list
+    events:
+      - http:
+          path: spotify
+          method: get
+          cors: true
+
+  get:
+    handler: get.get
+    events:
+      - http:
+          path: spotify/{songname}
+          method: get
+          cors: true
+          
+resources:
+  Resources:
+    RecordActivityTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: songname
+            AttributeType: S
+        KeySchema:
+          - AttributeName: songname
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:custom.table1}
+    PlayListTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: songname
+            AttributeType: S
+        KeySchema:
+          - AttributeName: songname
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:custom.table2}
